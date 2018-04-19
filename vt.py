@@ -27,11 +27,26 @@ class VirusTotal:
         self.api = "06152a7ad29de8672ae94b27e7079f2911b0c64f9c63f4cb516113c9919420a1"
         logging.basicConfig(filename='vt.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         return
+    
+    def inspect(self, inputFilename, outputFilename):
+        '''
+            Driver.
+            1. Reads domain list from file
+            2. Creates output file
+            3. Gives url to 
+        '''
+        ifile = self.read(inputFilename)
+        ofile = self.append(outputFilename)
+        domainList = ifile.read().split()
+
+        for i in range(0, len):
+
 
     def request(self, url):
         '''
             Given a url, will get the json results.
         '''
+        # This section sends the url
         print("[ ] Sending url...")
         try:
             addResponse = self.add_url(url)
@@ -47,7 +62,8 @@ class VirusTotal:
             #print(json_response['verbose_msg'])
             return
 
-        results = self.results(addResponse['scan_id'])
+        # This section you receive the JSON
+        results = self.results(addResponse)
         return results
 
     def add_url(self, url):
@@ -94,9 +110,24 @@ class VirusTotal:
         '''
         return
     
-    def save(self, filename):
+    def append(self, filename):
         '''
             Saves output to a file
         '''
-        
+        f = open(filename, 'a')
         return
+    
+    def read(self, filename):
+        '''
+            Read from a file
+        '''
+        f = open(filename, 'r')
+        return
+    
+    def close(self, filename):
+        '''
+            Closes a file
+        '''
+        filename.close()
+        return
+    
