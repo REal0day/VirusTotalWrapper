@@ -60,6 +60,7 @@ class VirusTotal:
         domainList = ifile.read().split()
 
         for i in range(0, len(domainList)):
+            print("{}/{}".format(i, len(domainList[i])))
             try:
                 result = self.request(domainList[i])
             except:
@@ -91,7 +92,7 @@ class VirusTotal:
             Given a url, will get the json results.
         '''
         # This section sends the url
-        print("[ ] Sending url...{}.format(url)")
+        print("[ ] Sending url...{}".format(url))
         try:
             addResponse = self.add_url(url)
         except:
