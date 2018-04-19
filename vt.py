@@ -67,7 +67,10 @@ class VirusTotal:
             scanResults = result['scans']
             
             for i in range(0, len(self.av_list)):
-                row += self.cell(scanResults[self.av_list[i]])
+                try:
+                    row += self.cell(scanResults[self.av_list[i]])
+                except:
+                    pass
                 row += ","
             
             row += "\n"
