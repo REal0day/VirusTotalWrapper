@@ -28,15 +28,15 @@ class VirusTotal:
         logging.basicConfig(filename='vt.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         return
     
-    def inspect(self, inputFilename, outputFilename):
+    def inspect(self, input_filename, output_filename):
         '''
             Driver.
             1. Reads domain list from file
             2. Creates output file
             3. Gives url to 
         '''
-        ifile = self.read(inputFilename)
-        ofile = self.append(outputFilename)
+        ifile = self.read(input_filename)
+        ofile = self.append(output_filename)
         domainList = ifile.read().split()
 
         for i in range(0, len(domainList)):
@@ -46,22 +46,34 @@ class VirusTotal:
         ofile.close()
         return
 
-    def inspect_to_csv(self, inputFilename, outputFilename):
+    def inspect_to_csv(self, input_filename, output_filename):
         '''
             Driver.
             1. Reads domain list from file
             2. Creates output file
-            3. Gives url to 
+            3. Formats output file
+            4. Gives url to 
         '''
-        ifile = self.read(inputFilename)
-        ofile = self.append(outputFilename)
+        ifile = self.read(input_filename)
+        ofile = self.append(output_filename)
+        self.csv_format(ofile) # Formats output file for csv
         domainList = ifile.read().split()
 
         for i in range(0, len(domainList)):
             result = self.request(domainList[i])
+            domain = result['url']
+            row = domain + ","
+            row += ",,,,," # This is the number of columns until the spreadsheet records AVs.
             scanResults = result['scans']
             
-            ofile.write(str(write_this))
+            for i in range(0, len(self.av_list)):
+                row += self.cell(scanResults[self.av_list[i]])
+                row += ","
+                print(row)
+            
+            row += "\n"
+            ofile.write(row)
+
         ifile.close()
         ofile.close()
         return
@@ -138,27 +150,28 @@ class VirusTotal:
         clean = clean.replace("True", "1")
         return clean
     
-    def format_cell(self):
+    def csv_format(self, output_file):
         '''
-            Given 
+            Creates a formatted csv, ready for data.
+            Don't get output_file and output_filename confused.
+            output_file is open.
         '''
-        
-        for i in range(0,len(vt_list)):
-            answer()
+        output_file.write("Domain,Detected,Clean,Suspicious,Malware,Malicious,ADMINUSLabs,AegisLab WebGuard,AlienVault,Antiy-AVL,Avira,Baidu-International,BitDefender,Blueliv,C-SIRT,Certly,CLEAN MX,Comodo Site Inspector,CyberCrime,CyRadar,desenmascara.me,DNS8,Dr.Web,Emsisoft,ESET,Forcepoint ThreatSeeker,Fortinet,FraudScore,FraudSense,G-Data,Google Safebrowsing,K7AntiVirus,Kaspersky,Malc0de Database,Malekal,Malware Domain Blocklist,Malwarebytes hpHosts,Malwared,MalwareDomainList,MalwarePatrol,malwares.com URL checker,Nucleon,OpenPhish,Opera,Phishtank,Quttera,Rising,SCUMWARE.org,SecureBrain,securolytics,Spam404,Sucuri SiteCheck,Tencent,ThreatHive,Trustwave,Virusdie External Site Scan,VX Vault,Web Security Guard,Webutation,Yandex Safebrowsing,ZCloudsec,ZDB Zeus,ZeroCERT,Zerofox,ZeusTracker,zvelo,AutoShun,Netcraft,NotMining,PhishLabs,Sophos,StopBadware,URLQuery\n")
+        return
 
-    def answer(self, av_result):
+    def cell(self, av_result):
         '''
             Given a single av_result by vt,
             this will format an output.
             ex. {'detected': False, 'result': 'clean site'}
                 'False/clean site'
         '''
-        cell = str(scanResults[self.vt_list[0]]['detected'])
-        cell += "/" + scanResults[vt_list[0]]['result']
+        cell = str(av_result['detected'])
+        cell += ";" + av_result['result']
         
         # Sometimes there aren't details.
         try:
-            a += scanResults[vt_list[0]]['detail']
+            cell += ";" + av_result['detail']
         except:
             pass
 
