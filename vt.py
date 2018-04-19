@@ -61,6 +61,12 @@ class VirusTotal:
 
         for i in range(0, len(domainList)):
             result = self.request(domainList[i])
+            
+            # In case there's an issue retrieving the JSON
+            if not (result):
+                ofile.write("BROKEN\n")
+                break
+
             domain = result['url']
             row = domain + ","
             row += ",,,,," # This is the number of columns until the spreadsheet records AVs.
@@ -110,20 +116,25 @@ class VirusTotal:
         '''  
         params = {'apikey': self.api, 'url': url}
         response = requests.post('https://www.virustotal.com/vtapi/v2/url/scan', data=params)
+        
         if (response.status_code == 403):
             logging.debug("403: {}".format(url))
             print("403") # DEBUGGING
             return
+
         try:
             json_response = response.json()
+
         except:
             print("Waiting 60s...")
             time.sleep(60)
             response = requests.post('https://www.virustotal.com/vtapi/v2/url/scan', data=params)
+            
             if (response.status_code == 403):
                 logging.debug("403: {}".format(url))
                 print("403") # DEBUGGING
                 return
+                
             json_response = response.json()
             pass
         return json_response
@@ -136,6 +147,10 @@ class VirusTotal:
         headers = {"Accept-Encoding": "gzip, deflate",\
             "User-Agent" : "gzip,  My Python requests library example client or username"}
         response = requests.post('https://www.virustotal.com/vtapi/v2/url/report', params=params, headers=headers)
+        
+        # There's a case where the response is empty
+        if not (response):
+            return
         json_response = response.json()
         return json_response
     
