@@ -84,3 +84,19 @@ class VirusTotal:
         response = requests.post('https://www.virustotal.com/vtapi/v2/url/report', params=params, headers=headers)
         json_response = response.json()
         return json_response
+    
+    def clean_json(self, jsonKinda):
+        '''
+            For whatever reason, VirusTotal gives you back a JSON that
+            most libraries just don't like.
+            None, single quotes and False are just a no-go.
+            This will clean those up.
+        '''
+        return
+    
+    def save(self, filename):
+        '''
+            Saves output to a file
+        '''
+        
+        return
