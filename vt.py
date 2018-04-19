@@ -60,10 +60,9 @@ class VirusTotal:
         domainList = ifile.read().split()
 
         for i in range(0, len(domainList)):
-            result = self.request(domainList[i])
-            
-            # In case there's an issue retrieving the JSON
-            if not (result):
+            try:
+                result = self.request(domainList[i])
+            except:
                 ofile.write("BROKEN\n")
                 break
 
