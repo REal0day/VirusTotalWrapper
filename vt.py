@@ -20,11 +20,11 @@
 # Merge two json strings to one json
 import requests, logging, time
 
-
 class VirusTotal:
 
     def __init__(self):
         self.api = "06152a7ad29de8672ae94b27e7079f2911b0c64f9c63f4cb516113c9919420a1"
+        self.av_list = open('VT-AVs', 'r').read().splitlines()
         logging.basicConfig(filename='vt.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         return
     
@@ -39,8 +39,32 @@ class VirusTotal:
         ofile = self.append(outputFilename)
         domainList = ifile.read().split()
 
-        for i in range(0, len):
+        for i in range(0, len(domainList)):
+            result = self.request(domainList[i])
+            ofile.write(str(result))
+        ifile.close()
+        ofile.close()
+        return
 
+    def inspect_to_csv(self, inputFilename, outputFilename):
+        '''
+            Driver.
+            1. Reads domain list from file
+            2. Creates output file
+            3. Gives url to 
+        '''
+        ifile = self.read(inputFilename)
+        ofile = self.append(outputFilename)
+        domainList = ifile.read().split()
+
+        for i in range(0, len(domainList)):
+            result = self.request(domainList[i])
+            scanResults = result['scans']
+            
+            ofile.write(str(write_this))
+        ifile.close()
+        ofile.close()
+        return
 
     def request(self, url):
         '''
@@ -63,7 +87,7 @@ class VirusTotal:
             return
 
         # This section you receive the JSON
-        results = self.results(addResponse)
+        results = self.results(addResponse['scan_id'])
         return results
 
     def add_url(self, url):
@@ -108,21 +132,51 @@ class VirusTotal:
             None, single quotes and False are just a no-go.
             This will clean those up.
         '''
-        return
+        clean = jsonKinda.replace("\'", "\"")
+        clean = clean.replace("None", "0")
+        clean = clean.replace("False", "0")
+        clean = clean.replace("True", "1")
+        return clean
+    
+    def format_cell(self):
+        '''
+            Given 
+        '''
+        
+        for i in range(0,len(vt_list)):
+            answer()
+
+    def answer(self, av_result):
+        '''
+            Given a single av_result by vt,
+            this will format an output.
+            ex. {'detected': False, 'result': 'clean site'}
+                'False/clean site'
+        '''
+        cell = str(scanResults[self.vt_list[0]]['detected'])
+        cell += "/" + scanResults[vt_list[0]]['result']
+        
+        # Sometimes there aren't details.
+        try:
+            a += scanResults[vt_list[0]]['detail']
+        except:
+            pass
+
+        return cell
     
     def append(self, filename):
         '''
             Saves output to a file
         '''
         f = open(filename, 'a')
-        return
+        return f
     
     def read(self, filename):
         '''
             Read from a file
         '''
         f = open(filename, 'r')
-        return
+        return f
     
     def close(self, filename):
         '''
