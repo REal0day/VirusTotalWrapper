@@ -69,7 +69,6 @@ class VirusTotal:
             for i in range(0, len(self.av_list)):
                 row += self.cell(scanResults[self.av_list[i]])
                 row += ","
-                print(row)
             
             row += "\n"
             ofile.write(row)
