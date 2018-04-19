@@ -63,6 +63,7 @@ class VirusTotal:
             try:
                 result = self.request(domainList[i])
             except:
+                print("Special Excpetion. Something Broke.")
                 ofile.write("BROKEN\n")
                 break
 
@@ -90,7 +91,7 @@ class VirusTotal:
             Given a url, will get the json results.
         '''
         # This section sends the url
-        print("[ ] Sending url...")
+        print("[ ] Sending url...{}.format(url)")
         try:
             addResponse = self.add_url(url)
         except:
