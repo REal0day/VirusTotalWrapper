@@ -61,27 +61,28 @@ class VirusTotal:
 
         for i in range(0, len(domainList)):
             print("{}/{}".format(i, len(domainList[i])))
+            
             try:
                 result = self.request(domainList[i])
+                domain = result['url']
+                row = domain + ","
+                row += ",,,,," # This is the number of columns until the spreadsheet records AVs.
+                scanResults = result['scans']
+                
+                for i in range(0, len(self.av_list)):
+                    try:
+                        row += self.cell(scanResults[self.av_list[i]])
+                    except:
+                        pass
+                    row += ","
+                
+                row += "\n"
+                ofile.write(row)
+
             except:
                 print("Special Excpetion. Something Broke.")
                 ofile.write("BROKEN\n")
-                break
-
-            domain = result['url']
-            row = domain + ","
-            row += ",,,,," # This is the number of columns until the spreadsheet records AVs.
-            scanResults = result['scans']
-            
-            for i in range(0, len(self.av_list)):
-                try:
-                    row += self.cell(scanResults[self.av_list[i]])
-                except:
-                    pass
-                row += ","
-            
-            row += "\n"
-            ofile.write(row)
+                pass
 
         ifile.close()
         ofile.close()
