@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+#
+# https://stackoverflow.com/questions/23599345/create-log-file-one-every-day-in-python
 import os
 import time
 
