@@ -18,13 +18,15 @@
 
 # https://stackoverflow.com/questions/22698244/how-to-merge-two-json-string-in-python
 # Merge two json strings to one json
-import requests, logging, time
+import requests, logging, time, DailySave, queue
 
 class VirusTotal:
 
     def __init__(self):
         self.api = "06152a7ad29de8672ae94b27e7079f2911b0c64f9c63f4cb516113c9919420a1"
         self.av_list = open('VT-AVs', 'r').read().splitlines()
+        self.root_queue = queue.Queue()
+        self.user_queue = queue.Queue()
         logging.basicConfig(filename='vt.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         return
     
@@ -54,7 +56,10 @@ class VirusTotal:
             3. Formats output file
             4. Gives url to 
         '''
+        # Input file for domain_list
         ifile = self.read(input_filename)
+
+        # Analysis Output file. Contains all AV results per request
         ofile = self.append(output_filename)
         self.csv_format(ofile) # Formats output file for csv
         domainList = ifile.read().split()
@@ -87,6 +92,62 @@ class VirusTotal:
         ifile.close()
         ofile.close()
         return
+
+    def persistent_analysis(self, input_filename, output_filename):
+        
+        # Blacklist output file. New file each day.
+        with DailySave.RotatingFileOpener('blacklist', prepend='blacklist-', append='.txt') as bl:
+            while True:
+                data = do_shit()
+                bl.write(data)
+        '''
+            Driver.
+            1. Reads domain list from file
+            2. Creates output file
+            3. Formats output file
+            4. Gives url to 
+        '''
+        # Input file for domain_list
+        ifile = self.read(input_filename)
+
+        # Analysis Output file. Contains all AV results per request
+        ofile = self.append(output_filename)
+        self.csv_format(ofile) # Formats output file for csv
+        domainList = ifile.read().split()
+
+        for i in range(0, len(domainList)):
+            print("{}/{}".format(i, len(domainList[i])))
+            
+            try:
+                result = self.request(domainList[i])
+
+                # Determine if domain is malicious
+                if (is_malicious(result)):
+                    
+
+                domain = result['url']
+                row = domain + ","
+                row += ",,,,," # This is the number of columns until the spreadsheet records AVs.
+                scanResults = result['scans']
+                
+                for i in range(0, len(self.av_list)):
+                    try:
+                        row += self.cell(scanResults[self.av_list[i]])
+                    except:
+                        pass
+                    row += ","
+                
+                row += "\n"
+                ofile.write(row)
+
+            except:
+                print("Special Excpetion. Something Broke.")
+                ofile.write("BROKEN\n")
+                pass
+
+        ifile.close()
+        ofile.close()
+        return    
 
     def request(self, url):
         '''
@@ -217,3 +278,16 @@ class VirusTotal:
         filename.close()
         return
     
+    def is_malicious(self, result):
+        '''
+            Determines if a domain is malicious.
+            If both Forcepoint ThreatSeeker and Fortinet return True,
+            it is malicious.
+        '''
+        try:
+            if (result['scans']['Forcepoint ThreatSeeker']['detected'] & r['scans']['Fortinet']['detected']:
+                return True
+        except:
+            logging.warning("{} could not be determine as malicious or not. AVs on VT might not have analyzed domain.")
+            pass
+        return False
