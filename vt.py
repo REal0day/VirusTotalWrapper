@@ -25,12 +25,13 @@ class VirusTotal:
     def __init__(self):
         self.api = "06152a7ad29de8672ae94b27e7079f2911b0c64f9c63f4cb516113c9919420a1"
         self.av_list = open('VT-AVs', 'r').read().splitlines()
-        self.root_queue = queue.Queue()
-        self.user_queue = queue.Queue()
+        self.blk_out = open('GlobalBlacklist.txt', 'a')
+        self.analysis_output = open('Full-Analysis.txt', 'a')
+        self.analysis_file = 'Full-Analysis.txt'
         logging.basicConfig(filename='vt.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         return
     
-    def inspect(self, input_filename, output_filename):
+    def inspect(self, input_filename):
         '''
             Driver.
             1. Reads domain list from file
@@ -38,68 +39,18 @@ class VirusTotal:
             3. Gives url to 
         '''
         ifile = self.read(input_filename)
-        ofile = self.append(output_filename)
         domainList = ifile.read().split()
 
         for i in range(0, len(domainList)):
             result = self.request(domainList[i])
-            ofile.write(str(result))
+            self.analysis_output.write(str(result))
         ifile.close()
-        ofile.close()
-        return
-
-    def inspect_to_csv(self, input_filename, output_filename):
-        '''
-            Driver.
-            1. Reads domain list from file
-            2. Creates output file
-            3. Formats output file
-            4. Gives url to 
-        '''
-        # Input file for domain_list
-        ifile = self.read(input_filename)
-
-        # Analysis Output file. Contains all AV results per request
-        ofile = self.append(output_filename)
-        self.csv_format(ofile) # Formats output file for csv
-        domainList = ifile.read().split()
-
-        for i in range(0, len(domainList)):
-            print("{}/{}".format(i, len(domainList[i])))
-            
-            try:
-                result = self.request(domainList[i])
-                domain = result['url']
-                row = domain + ","
-                row += ",,,,," # This is the number of columns until the spreadsheet records AVs.
-                scanResults = result['scans']
-                
-                for i in range(0, len(self.av_list)):
-                    try:
-                        row += self.cell(scanResults[self.av_list[i]])
-                    except:
-                        pass
-                    row += ","
-                
-                row += "\n"
-                ofile.write(row)
-
-            except:
-                print("Special Excpetion. Something Broke.")
-                ofile.write("BROKEN\n")
-                pass
-
-        ifile.close()
-        ofile.close()
-        return
-
-    def persistent_analysis(self, input_filename, output_filename):
+        self.analysis_output.close()
+        open(self.analysis_file, 'a')
         
-        # Blacklist output file. New file each day.
-        with DailySave.RotatingFileOpener('blacklist', prepend='blacklist-', append='.txt') as bl:
-            while True:
-                data = do_shit()
-                bl.write(data)
+        return
+
+    def inspect_to_csv(self, input_filename):
         '''
             Driver.
             1. Reads domain list from file
@@ -109,10 +60,8 @@ class VirusTotal:
         '''
         # Input file for domain_list
         ifile = self.read(input_filename)
-
         # Analysis Output file. Contains all AV results per request
-        ofile = self.append(output_filename)
-        self.csv_format(ofile) # Formats output file for csv
+        self.csv_format(self.analysis_output) # Formats output file for csv
         domainList = ifile.read().split()
 
         for i in range(0, len(domainList)):
@@ -120,11 +69,6 @@ class VirusTotal:
             
             try:
                 result = self.request(domainList[i])
-
-                # Determine if domain is malicious
-                if (is_malicious(result)):
-                    
-
                 domain = result['url']
                 row = domain + ","
                 row += ",,,,," # This is the number of columns until the spreadsheet records AVs.
@@ -138,16 +82,79 @@ class VirusTotal:
                     row += ","
                 
                 row += "\n"
-                ofile.write(row)
+                self.analysis_output.write(row)
 
             except:
                 print("Special Excpetion. Something Broke.")
-                ofile.write("BROKEN\n")
+                self.analysis_output.write("BROKEN\n")
                 pass
 
         ifile.close()
-        ofile.close()
-        return    
+        self.analysis_output.close()
+        open(self.analysis_file, 'a')
+        return
+
+    def persistent_analysis(self, input_filename):
+        '''
+            Driver.
+            1. Reads domain list from file
+            2. Creates output file
+            3. Formats output file
+            4. Gives url to 
+        '''
+        # Blacklist output file. New file each day.
+        # Removing blacklist file per day. Going to make it one master blacklist.
+        #with DailySave.RotatingFileOpener('blacklist', prepend='blacklist-', append='.txt') as bl:
+        while True:
+
+            # Input file for domain_list
+            ifile = open(input_filename, 'r')
+            ifile_list = ifile.read().split()
+            if (list(set(ofile_list) - set(ifile_list))):
+
+
+            # Analysis Output file. Contains all AV results per request
+            self.csv_format(self.analysis_output) # Formats output file for csv
+            domainList = ifile.read().split()
+
+            for i in range(0, len(domainList)):
+                print("{}/{}".format(i, len(domainList[i])))
+                
+                try:
+                    result = self.request(domainList[i])
+
+                    # Determine if domain is malicious
+                    if (self.is_malicious(result)):                    
+                        bl.write(domainList[i])
+
+                    self.csv_output(result)
+
+                except:
+                    print("Check persistent analysis..")
+                    self.analysis_output.write("Check persistent analysis.\n")
+                    pass
+
+            ifile.close()
+            self.analysis_output.close()
+            open(self.analysis_file, 'a')
+            return    
+
+    def csv_output(self, result):
+        domain = result['url']
+        row = domain + ","
+        row += ",,,,," # This is the number of columns until the spreadsheet records AVs.
+        scanResults = result['scans']
+        
+        for i in range(0, len(self.av_list)):
+            try:
+                row += self.cell(scanResults[self.av_list[i]])
+            except:
+                pass
+            row += ","
+        
+        row += "\n"
+        self.analysis_output.write(row)
+        return
 
     def request(self, url):
         '''
@@ -264,19 +271,24 @@ class VirusTotal:
         f = open(filename, 'a')
         return f
     
-    def read(self, filename):
-        '''
-            Read from a file
-        '''
-        f = open(filename, 'r')
-        return f
-    
     def close(self, filename):
         '''
             Closes a file
         '''
         filename.close()
         return
+
+    def malcheck(self, url):
+        result = self.request(url)
+        if (self.is_malicious(result)):
+            conclusion = "MALICIOUS"
+        elif (not self.is_malicious(result)):
+            conclusion = "NOT malicious"
+        else:
+            print('mal_check broke, but because of is_malicious()')
+            logging.debug('mal_check broke, but because of is_malicious()')
+        print("{}: {}".format(conclusion, url))
+        return 
     
     def is_malicious(self, result):
         '''
@@ -285,7 +297,7 @@ class VirusTotal:
             it is malicious.
         '''
         try:
-            if (result['scans']['Forcepoint ThreatSeeker']['detected'] & r['scans']['Fortinet']['detected']:
+            if (result['scans']['Forcepoint ThreatSeeker']['detected'] & result['scans']['Fortinet']['detected']):
                 return True
         except:
             logging.warning("{} could not be determine as malicious or not. AVs on VT might not have analyzed domain.")
