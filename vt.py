@@ -19,19 +19,19 @@
 # https://stackoverflow.com/questions/22698244/how-to-merge-two-json-string-in-python
 # Merge two json strings to one json
 import Mallector, requests, logging
-import time, DailySave, queue, os
+import time, DailySave, queue, os, datetime
 
 class VirusTotal:
 
     def __init__(self):
-        self.api = "06152a7ad29de8672ae94b27e7079f2911b0c64f9c63f4cb516113c9919420a1"
+        self.api = None
         self.av_list = open('data/VT-AVs', 'r').read().splitlines()
         self.potentials = None
         self.potentials_file = 'data/Potentials.txt'
         self.blk = None
         self.blk_file = 'data/GlobalBlacklist.txt'
         self.analysis = None
-        self.analysis_file = 'data/Full-Analysis.txt'
+        self.analysis_file = 'data/Full-Analysis.csv'
         self.processed = None
         self.processed_file = 'data/Processed_file.txt'
         logging.basicConfig(filename='logs/vt.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
@@ -66,7 +66,10 @@ class VirusTotal:
         # Input file for domain_list
         ifile = open(input_filename, 'r')
         # Analysis Output file. Contains all AV results per request
-        analysis = open(self.analysis_file, 'a')
+        
+        # DEBUG TEST #
+        #analysis = open(self.analysis_file, 'a')
+        analysis = open('test-one.csv', 'a')
         self.csv_format(analysis) # Formats output file for csv
         domainList = ifile.read().split()
 
@@ -77,7 +80,9 @@ class VirusTotal:
                 result = self.request(domainList[i])
                 domain = result['url']
                 row = domain + ","
-                row += ",,,,," # This is the number of columns until the spreadsheet records AVs.
+                ts = time.time()
+                timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+                row += ",{},,,,,".format(timestamp) # This is the number of columns until the spreadsheet records AVs.
                 scanResults = result['scans']
                 
                 for i in range(0, len(self.av_list)):
@@ -88,11 +93,21 @@ class VirusTotal:
                     row += ","
                 
                 row += "\n"
-                analysis.write(row)
+                try:
+                    analysis.write(row)
+                except:
+                    logging.exception("message")
 
             except:
                 print("Special Excpetion. Something Broke.")
-                self.analysis.write("BROKEN\n")
+                
+                try:
+                    self.analysis.write("BROKEN\n")
+
+                except:
+                    logging.exception("message")
+
+                logging.exception("message")
                 pass
 
         ifile.close()
@@ -114,12 +129,16 @@ class VirusTotal:
 
         while True:
 
-            # Mallector Gathers domains
-            # Mallector stores them into a file
-            # We open that file
+            # Updates feeds
             collector.update_feeds()
+
+            # Gathers all new domains from feeds
             collector.collect(self.potentials_file)
-        
+
+            # Cleans all duplicates in all three files.
+            collector.clean_files()
+
+            # Creates a list of potentially malicious domains from potential.txt
             new_potentials = self.new_pdomains()
             if (new_potentials):
 
@@ -154,6 +173,7 @@ class VirusTotal:
                     except:
                         print("Check persistent analysis..")
                         logging.debug("Check persistent analysis.\n")
+                        logging.exception("message")
                         pass
                 
                 analysis.close()
@@ -164,7 +184,6 @@ class VirusTotal:
             else:
                 logging.info("No new potentially malicious domains.")
                 time.sleep(60)
-                #self.update() # This checks processed file again.
 
         return    
 
@@ -205,6 +224,7 @@ class VirusTotal:
             print("[+] URL Added: {}".format(url))
         else:
             logging.debug(addResponse)
+            logging.exception("message")
             #print(json_response['verbose_msg'])
             return
 
@@ -238,6 +258,7 @@ class VirusTotal:
                 return
                 
             json_response = response.json()
+            logging.exception("message")
             pass
         return json_response
     
@@ -252,6 +273,7 @@ class VirusTotal:
             potentials = open(self.potentials_file, 'a')
             potentials.close()
             potentials = open(self.potentials_file, 'r')
+            logging.exception("message")
             pass     
 
         potentials_list = potentials.read().split()
@@ -265,6 +287,7 @@ class VirusTotal:
             blkout = open(self.blk_file, 'a')
             blkout.close()
             blkout = open(self.blk_file, 'r')
+            logging.exception("message")
             pass
 
         blkout_list = blkout.read().split()
@@ -278,6 +301,7 @@ class VirusTotal:
             processed = open(self.processed_file, 'a')
             processed.close()
             processed = open(self.processed_file, 'r')
+            logging.exception("message")
             pass
 
         processed_list = processed.read().split()
@@ -339,6 +363,7 @@ class VirusTotal:
         try:
             cell += ";" + av_result['detail']
         except:
+            logging.exception("message")
             pass
 
         return cell
@@ -380,5 +405,6 @@ class VirusTotal:
                 return True
         except:
             logging.warning("{} could not be determine as malicious or not. AVs on VT might not have analyzed domain.")
+            logging.exception("message")
             pass
         return False

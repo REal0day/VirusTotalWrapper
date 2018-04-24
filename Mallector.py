@@ -13,8 +13,16 @@ from urllib.parse import urlparse
 class Mallector:
 
     def __init__(self):
-        self.malfeeds = open('data/malware-feeds', 'r').read().splitlines()
+        self.malfeeds = open('malware-feeds', 'r').read().splitlines()
         self.potential_list = []
+        self.potentials = None
+        self.potentials_file = 'data/Potentials.txt'
+        self.blk = None
+        self.blk_file = 'data/GlobalBlacklist.txt'
+        self.analysis = None
+        self.analysis_file = 'data/Full-Analysis.txt'
+        self.processed = None
+        self.processed_file = 'data/Processed_file.txt'
         logging.basicConfig(filename='logs/Mallector.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         return
     
@@ -62,8 +70,6 @@ class Mallector:
             uri_list = self.domain_splitter(domain_string)
             return uri_list
         
-        # Case 3: 9.9.9.9
-        
         print("find_domain broke. Check log.")
         logging.debug("find_domain broke. {}".format(domain_string))
         return
@@ -92,23 +98,31 @@ class Mallector:
 
                 result = self.find_domain(domain_string)
 
-                if (type(result) == str):
-                    self.potential_list.append(result)
+                # If result is NOT empty, do this.
+                if (result):
 
-                # Checks to see if domain_string reutrned a list containing
-                # a domain and a domain w/ a file.
-                # The list shouldn't be bigger than 2. If so somethign strange happened.
-                if (type(result) == list):
+                    if (type(result) == str):
+                        self.potential_list.append(result)
 
-                    # Checks to see if list is bigger than 2. It shouldn't ever.
-                    if (len(result) > 2):
-                        logging.debug("List bigger than 2: {}".format(result))
+                    # Checks to see if domain_string reutrned a list containing
+                    # a domain and a domain w/ a file.
+                    # The list shouldn't be bigger than 2. If so somethign strange happened.
+                    if (type(result) == list):
 
-                    for i in range(0,len(result)):
-                        self.potential_list.append(result[i])
+                        # Checks to see if list is bigger than 2. It shouldn't ever.
+                        if (len(result) > 2):
+                            logging.debug("List bigger than 2: {}".format(result))
+
+                        for i in range(0,len(result)):
+                            self.potential_list.append(result[i])
+                else:
+                    pass
         
         # Removes dupes
-        self.potential_list = set(self.potential_list) 
+        self.potential_list = set(self.potential_list)
+
+        # Remove any domains already collected.
+        
 
         out = open(output_filename, 'a')
         for item in self.potential_list:
@@ -116,3 +130,65 @@ class Mallector:
         out.close()
         print("{} of pMaliciousDomains saved to {}".format(len(self.potential_list), output_filename))
         return
+    
+    def dedupe(self, filename):
+        '''
+            Eliminates duplicates in file.
+        '''
+        old_lines = open(filename).readlines()
+        number_of_lines_before = len(old_lines)
+        uniqlines = set(old_lines)
+        current_number = len(uniqlines)
+        number_of_dupes = number_of_lines_before - current_number
+        if (number_of_dupes > 1):
+            print("{} duplicates in {}!".format(number_of_dupes, filename))
+            open(filename, 'w').writelines(set(uniqlines))
+            self.number_of_domains(current_number)
+
+        elif (number_of_dupes == 1):
+            print("{} duplicate in {}!".format(number_of_dupes, filename))
+            open(filename, 'w').writelines(set(uniqlines))
+            self.number_of_domains(current_number)
+
+        else:
+            print("No duplicates present in {}".format(filename))
+            self.number_of_domains(current_number)
+        return
+    
+    def number_of_domains(self, domain_number):
+
+        if (domain_number > 1):
+            print("File has {} domains.".format(domain_number))
+
+        elif (domain_number == 1):
+            print("File has {} domain.".format(domain_number))
+
+        elif (domain_number == 0):
+            print("File has no domains.")
+
+        else:
+            print("Current number of domains is <0. Seems odd.")
+            logging.debug('dedupe function returning less than 0.')
+        return
+    
+    def clean_files(self):
+        '''
+            Removes duplicates in each individual file.
+        '''
+        self.dedupe(self.blk_file)
+        self.dedupe(self.processed_file)
+        self.dedupe(self.potentials_file)
+        return
+
+    def removed_preprocessed_blacklist_domains(self):
+        '''
+            Removes domains that have been blacklisted
+        '''
+        blk_file_lines = open(self.blk_file, 'r').readlines()
+        potential_lines = open(self.potentials_file, 'r').readlines()
+
+        uniqlines = set(old_lines)
+        current_number = len(uniqlines)
+        number_of_dupes = number_of_lines_before - current_number
+        return
+        
