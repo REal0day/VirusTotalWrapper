@@ -18,17 +18,23 @@
 
 # https://stackoverflow.com/questions/22698244/how-to-merge-two-json-string-in-python
 # Merge two json strings to one json
-import requests, logging, time, DailySave, queue
+import Mallector, requests, logging
+import time, DailySave, queue, os
 
 class VirusTotal:
 
     def __init__(self):
         self.api = "06152a7ad29de8672ae94b27e7079f2911b0c64f9c63f4cb516113c9919420a1"
-        self.av_list = open('VT-AVs', 'r').read().splitlines()
-        self.blk_out = open('GlobalBlacklist.txt', 'a')
-        self.analysis_output = open('Full-Analysis.txt', 'a')
-        self.analysis_file = 'Full-Analysis.txt'
-        logging.basicConfig(filename='vt.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
+        self.av_list = open('data/VT-AVs', 'r').read().splitlines()
+        self.potentials = None
+        self.potentials_file = 'data/Potentials.txt'
+        self.blk = None
+        self.blk_file = 'data/GlobalBlacklist.txt'
+        self.analysis = None
+        self.analysis_file = 'data/Full-Analysis.txt'
+        self.processed = None
+        self.processed_file = 'data/Processed_file.txt'
+        logging.basicConfig(filename='logs/vt.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         return
     
     def inspect(self, input_filename):
@@ -38,16 +44,15 @@ class VirusTotal:
             2. Creates output file
             3. Gives url to 
         '''
-        ifile = self.read(input_filename)
+        analysis = open(self.analysis_file, 'a')
+        ifile = open(input_filename, 'r')
         domainList = ifile.read().split()
 
         for i in range(0, len(domainList)):
             result = self.request(domainList[i])
-            self.analysis_output.write(str(result))
+            self.analysis.write(str(result))
         ifile.close()
-        self.analysis_output.close()
-        open(self.analysis_file, 'a')
-        
+        analysis.close()
         return
 
     def inspect_to_csv(self, input_filename):
@@ -59,13 +64,14 @@ class VirusTotal:
             4. Gives url to 
         '''
         # Input file for domain_list
-        ifile = self.read(input_filename)
+        ifile = open(input_filename, 'r')
         # Analysis Output file. Contains all AV results per request
-        self.csv_format(self.analysis_output) # Formats output file for csv
+        analysis = open(self.analysis_file, 'a')
+        self.csv_format(analysis) # Formats output file for csv
         domainList = ifile.read().split()
 
         for i in range(0, len(domainList)):
-            print("{}/{}".format(i, len(domainList[i])))
+            print("{}/{}".format(i, len(domainList)))
             
             try:
                 result = self.request(domainList[i])
@@ -82,19 +88,18 @@ class VirusTotal:
                     row += ","
                 
                 row += "\n"
-                self.analysis_output.write(row)
+                analysis.write(row)
 
             except:
                 print("Special Excpetion. Something Broke.")
-                self.analysis_output.write("BROKEN\n")
+                self.analysis.write("BROKEN\n")
                 pass
 
         ifile.close()
-        self.analysis_output.close()
-        open(self.analysis_file, 'a')
+        analysis.close()
         return
 
-    def persistent_analysis(self, input_filename):
+    def persistent_analysis(self):
         '''
             Driver.
             1. Reads domain list from file
@@ -105,41 +110,66 @@ class VirusTotal:
         # Blacklist output file. New file each day.
         # Removing blacklist file per day. Going to make it one master blacklist.
         #with DailySave.RotatingFileOpener('blacklist', prepend='blacklist-', append='.txt') as bl:
+        collector = Mallector.Mallector()
+
         while True:
 
-            # Input file for domain_list
-            ifile = open(input_filename, 'r')
-            ifile_list = ifile.read().split()
-            if (list(set(ofile_list) - set(ifile_list))):
+            # Mallector Gathers domains
+            # Mallector stores them into a file
+            # We open that file
+            collector.update_feeds()
+            collector.collect(self.potentials_file)
+        
+            new_potentials = self.new_pdomains()
+            if (new_potentials):
 
+                # Analysis Output file. Contains all AV results per request
+                analysis = open(self.analysis_file, 'a')
+                self.blk = open(self.blk_file, 'a')
+                potentials = open(self.potentials_file, 'r')
+                self.processed = open(self.processed_file, 'a')
+                self.csv_format(analysis) # Formats output file for csv
+                domainList = potentials.read().split()
 
-            # Analysis Output file. Contains all AV results per request
-            self.csv_format(self.analysis_output) # Formats output file for csv
-            domainList = ifile.read().split()
+                for i in range(0, len(domainList)):
+                    print("{}/{}".format(i, len(domainList)))
+                    
+                    try:
+                        result = self.request(domainList[i])
 
-            for i in range(0, len(domainList)):
-                print("{}/{}".format(i, len(domainList[i])))
+                        # Determine if domain is malicious
+                        if (self.is_malicious(result)):
+                            print('{} is MALICIOUS!'.format(domainList[i]))
+                            self.blk.write(domainList[i] + "\n")
+                            self.blk.flush()
+                            os.fsync(self.blk.fileno())
+                        else:
+                            print('{} is NOT malicious!'.format(domainList[i]))
+                            self.processed.write(domainList[i] + "\n")
+                            self.processed.flush()
+                            os.fsync(self.processed.fileno())
+
+                        self.csv_output(result)
+
+                    except:
+                        print("Check persistent analysis..")
+                        logging.debug("Check persistent analysis.\n")
+                        pass
                 
-                try:
-                    result = self.request(domainList[i])
+                analysis.close()
+                self.blk.close()
+                potentials.close()
+                self.processed.close()
 
-                    # Determine if domain is malicious
-                    if (self.is_malicious(result)):                    
-                        bl.write(domainList[i])
+            else:
+                logging.info("No new potentially malicious domains.")
+                time.sleep(60)
+                #self.update() # This checks processed file again.
 
-                    self.csv_output(result)
-
-                except:
-                    print("Check persistent analysis..")
-                    self.analysis_output.write("Check persistent analysis.\n")
-                    pass
-
-            ifile.close()
-            self.analysis_output.close()
-            open(self.analysis_file, 'a')
-            return    
+        return    
 
     def csv_output(self, result):
+        analysis = open(self.analysis_file, 'a')
         domain = result['url']
         row = domain + ","
         row += ",,,,," # This is the number of columns until the spreadsheet records AVs.
@@ -153,7 +183,8 @@ class VirusTotal:
             row += ","
         
         row += "\n"
-        self.analysis_output.write(row)
+        analysis.write(row)
+        analysis.close()
         return
 
     def request(self, url):
@@ -166,7 +197,8 @@ class VirusTotal:
             addResponse = self.add_url(url)
         except:
             print("Waiting 60s...")
-            addResponse = self.add_url(url)
+            self.blk.flush()
+            os.fsync(self.blk.fileno())
             pass
 
         if ('successfully' in addResponse['verbose_msg']):
@@ -209,6 +241,53 @@ class VirusTotal:
             pass
         return json_response
     
+    def new_pdomains(self):
+        
+        # Input file for domain_list
+        try:
+            potentials = open(self.potentials_file, 'r')
+
+        except FileNotFoundError:
+            logging.info("{} not found. Creating one now.".format(self.potentials_file))
+            potentials = open(self.potentials_file, 'a')
+            potentials.close()
+            potentials = open(self.potentials_file, 'r')
+            pass     
+
+        potentials_list = potentials.read().split()
+        potentials.close()        
+
+        try:
+            blkout = open(self.blk_file, 'r')
+
+        except FileNotFoundError:
+            logging.info("{} not found. Creating one now.".format(self.blk_file))
+            blkout = open(self.blk_file, 'a')
+            blkout.close()
+            blkout = open(self.blk_file, 'r')
+            pass
+
+        blkout_list = blkout.read().split()
+        blkout.close()
+
+        try:
+            processed = open(self.processed_file, 'r')
+
+        except FileNotFoundError:
+            logging.info("{} not found. Creating one now.".format(self.processed_file))
+            processed = open(self.processed_file, 'a')
+            processed.close()
+            processed = open(self.processed_file, 'r')
+            pass
+
+        processed_list = processed.read().split()
+        processed.close()
+
+        temp_total_list = blkout_list + processed_list
+        if not (list(set(potentials_list) - set(temp_total_list))):
+            return False
+        return True
+
     def results(self, scan_id):
         '''
             Gets the results of a domain/url/ip request.
