@@ -24,7 +24,7 @@ import time, DailySave, queue, os, datetime
 class VirusTotal:
 
     def __init__(self):
-        self.api = None
+        self.api = "06152a7ad29de8672ae94b27e7079f2911b0c64f9c63f4cb516113c9919420a1"
         self.av_list = open('data/VT-AVs', 'r').read().splitlines()
         self.potentials = None
         self.potentials_file = 'data/Potentials.txt'
@@ -34,6 +34,7 @@ class VirusTotal:
         self.analysis_file = 'data/Full-Analysis.csv'
         self.processed = None
         self.processed_file = 'data/Processed_file.txt'
+        self.cycles = 0
         logging.basicConfig(filename='logs/vt.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         return
     
@@ -129,6 +130,9 @@ class VirusTotal:
 
         while True:
 
+            # Number of cycles
+            print("Number of cycles: {}".format(self.cycles))
+
             # Updates feeds
             collector.update_feeds()
 
@@ -136,7 +140,10 @@ class VirusTotal:
             collector.collect(self.potentials_file)
 
             # Cleans all duplicates in all three files.
-            collector.clean_files()
+            collector.dedupe_all()
+
+            # Cleans all domains that have already been processed
+            collector.already_processed()
 
             # Creates a list of potentially malicious domains from potential.txt
             new_potentials = self.new_pdomains()
@@ -191,7 +198,9 @@ class VirusTotal:
         analysis = open(self.analysis_file, 'a')
         domain = result['url']
         row = domain + ","
-        row += ",,,,," # This is the number of columns until the spreadsheet records AVs.
+        ts = time.time()
+        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        row += ",{},,,,,".format(timestamp) # This is the number of columns until the spreadsheet records AVs.
         scanResults = result['scans']
         
         for i in range(0, len(self.av_list)):
@@ -204,6 +213,7 @@ class VirusTotal:
         row += "\n"
         analysis.write(row)
         analysis.close()
+        self.cycles += 1
         return
 
     def request(self, url):

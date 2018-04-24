@@ -98,32 +98,26 @@ class Mallector:
 
                 result = self.find_domain(domain_string)
 
-                # If result is NOT empty, do this.
-                if (result):
+                if (type(result) == str):
+                    self.potential_list.append(result)
 
-                    if (type(result) == str):
-                        self.potential_list.append(result)
+                # Checks to see if domain_string reutrned a list containing
+                # a domain and a domain w/ a file.
+                # The list shouldn't be bigger than 2. If so somethign strange happened.
+                if (type(result) == list):
 
-                    # Checks to see if domain_string reutrned a list containing
-                    # a domain and a domain w/ a file.
-                    # The list shouldn't be bigger than 2. If so somethign strange happened.
-                    if (type(result) == list):
+                    # Checks to see if list is bigger than 2. It shouldn't ever.
+                    if (len(result) > 2):
+                        logging.debug("List bigger than 2: {}".format(result))
 
-                        # Checks to see if list is bigger than 2. It shouldn't ever.
-                        if (len(result) > 2):
-                            logging.debug("List bigger than 2: {}".format(result))
-
-                        for i in range(0,len(result)):
-                            self.potential_list.append(result[i])
-                else:
-                    pass
+                    for i in range(0,len(result)):
+                        self.potential_list.append(result[i])
         
         # Removes dupes
         self.potential_list = set(self.potential_list)
+        self.potential_list = list(self.potential_list
 
         # Remove any domains already collected.
-        
-
         out = open(output_filename, 'a')
         for item in self.potential_list:
             out.write("%s\n" % item)
@@ -171,13 +165,48 @@ class Mallector:
             logging.debug('dedupe function returning less than 0.')
         return
     
-    def clean_files(self):
+    def dedupe_all(self):
         '''
             Removes duplicates in each individual file.
         '''
         self.dedupe(self.blk_file)
         self.dedupe(self.processed_file)
         self.dedupe(self.potentials_file)
+        return
+    
+    def already_processed(self):
+        count = 0
+        blk = open(self.blk_file, 'r')
+        potentials = open(self.potentials_file, 'r')
+        processed = open(self.processed_file, 'r')
+
+        blk_list = blk.read().split()
+        potentials_list = potentials.read().split()
+        processed_list = processed.read().split()
+
+        already_processed_list = processed_list + blk_list
+
+        for item1 in range(0,len(already_processed_list)):
+            for item2 in range(0,len(potentials_list)):
+                try:
+                    if (already_processed_list[item1] == potentials_list[item2]):
+                        potentials_list.remove(already_processed_list[item1])
+                        count += 1
+                except:
+                    pass
+        
+        blk.close()
+        potentials.close()
+        processed.close()
+
+        print("{} domains already processed for potential.".format(count))
+        print("{} potentially malicious domains.".format(len(potentials_list)))
+
+        f = open(self.potentials_file, 'w')
+        for i in range(0, len(potentials_list)):
+            f.write(potentials_list[i] + "\n")
+        f.close()
+
         return
 
     def removed_preprocessed_blacklist_domains(self):
