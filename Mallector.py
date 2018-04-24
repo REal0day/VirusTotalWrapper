@@ -13,9 +13,9 @@ from urllib.parse import urlparse
 class Mallector:
 
     def __init__(self):
-        self.malfeeds = open('malware-feeds', 'r').read().splitlines()
+        self.malfeeds = open('data/malware-feeds', 'r').read().splitlines()
         self.potential_list = []
-        logging.basicConfig(filename='Mallector.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
+        logging.basicConfig(filename='logs/Mallector.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         return
     
     def update_feeds(self):
@@ -68,13 +68,12 @@ class Mallector:
         logging.debug("find_domain broke. {}".format(domain_string))
         return
     
-    def malc0de_feed_parser(self, feed):
-        value_string = feed['items'][i]['summary_detail']['value']
+    def malc0de_feed_parser(self, value_string):
         value_list = value_string.split(' ')
         domain_string = value_list[1][:-1]
         return domain_string
 
-    def collect(self):
+    def collect(self, output_filename):
         # Goes through all the feeds in the file "malware-feeds"
         for i in range(0,len(self.malfeeds)):
             url = self.malfeeds[i]
@@ -85,10 +84,11 @@ class Mallector:
 
                 # SPECIFIC FOR //malc0de.com/rss/
                 if (url == 'http://malc0de.com/rss/'):
-                    domain_string = malc0de_feed_parser(feed)
+                    value_string = feed['items'][i]['summary_detail']['value']
+                    domain_string = self.malc0de_feed_parser(value_string)
                 
                 if (url == 'https://cybercrime-tracker.net/rss.xml'):
-                    
+                    domain_string = feed['items'][i]['title']
 
                 result = self.find_domain(domain_string)
 
@@ -110,5 +110,9 @@ class Mallector:
         # Removes dupes
         self.potential_list = set(self.potential_list) 
 
-        print("List of pMaliciousDomains: {}".format(len(self.potential_list)))
+        out = open(output_filename, 'a')
+        for item in self.potential_list:
+            out.write("%s\n" % item)
+        out.close()
+        print("{} of pMaliciousDomains saved to {}".format(len(self.potential_list), output_filename))
         return
