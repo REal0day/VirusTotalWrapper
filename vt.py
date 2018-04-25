@@ -262,7 +262,12 @@ class VirusTotal:
                 logging.exception("message")
                 pass
 
-            self.reprocess_line +=1
+            # This ensure that the reporcess_line counter won't go past the range of number of lines in the file.
+            if (self.reprocess_line == len(processed_list)):
+                self.reprocess_line = 0
+            else:
+                self.reprocess_line +=1
+
             time_lapsed = time.time()
 
         return
