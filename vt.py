@@ -136,12 +136,23 @@ class VirusTotal:
         self.api = api_key
 
         # Determine if files exist, if they don't create them.
+        # Full-Analysis.txt
         if (self.files_exist(self.analysis_file)):
             self.analysis = open(self.analysis_file, 'a')
+
         else:
             self.csv_format() # Formats output file for csv
             self.analysis.flush()
             os.fsync(self.analysis.fileno())
+
+        # GlobalBlacklist.txt
+        if (self.files_exist(self.blk_file)):
+            self.blk = open(self.blk_file, 'a')
+            
+        else:
+            self.csv_format() # Formats output file for csv
+            self.blk.flush()
+            os.fsync(self.blk.fileno())
 
         # Blacklist output file. New file each day.
         # Removing blacklist file per day. Going to make it one master blacklist.
@@ -252,10 +263,6 @@ class VirusTotal:
 
             self.reprocess_line +=1
             time_lapsed = time.time()
-
-        return
-
-    def not_hour(self, time_lapsed):
 
         return
 
@@ -477,6 +484,8 @@ def main():
     print("Welcome to VirusTotalWrapper!")
     print("If you don't have an API-Key, get one for free at VirusTotal.com.")
     api = input("Enter your API-Key: ")
+
+    filecheck
     c = VirusTotal()
     c.persistent_analysis(api)
 
