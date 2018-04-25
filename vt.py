@@ -18,8 +18,10 @@
 
 # https://stackoverflow.com/questions/22698244/how-to-merge-two-json-string-in-python
 # Merge two json strings to one json
+from pathlib import Path
 import Mallector, requests, logging
 import time, DailySave, queue, os, datetime
+
 
 class VirusTotal:
 
@@ -35,8 +37,16 @@ class VirusTotal:
         self.processed = None
         self.processed_file = 'data/Processed_file.txt'
         self.cycles = 0
+        self.reprocess_line = 0 # Used to determine what line the reprocessing function is on
+        self.data = [self.analysis_file, self.blk_file, self.potentials_file, self.processed_file]
         logging.basicConfig(filename='logs/vt.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         return
+    
+    def files_exist(self, filename):
+        the_file = Path(filename)
+        if (the_file.is_file()):
+            return True
+        return False
     
     def inspect(self, input_filename):
         '''
@@ -71,7 +81,7 @@ class VirusTotal:
         # DEBUG TEST #
         #analysis = open(self.analysis_file, 'a')
         analysis = open('test-one.csv', 'a')
-        self.csv_format(analysis) # Formats output file for csv
+        self.csv_format() # Formats output file for csv
         domainList = ifile.read().split()
 
         for i in range(0, len(domainList)):
@@ -123,6 +133,15 @@ class VirusTotal:
             3. Formats output file
             4. Gives url to 
         '''
+        # Determine if files exist, if they don't create them.
+
+        if (self.files_exist(self.analysis_file)):
+            self.analysis = open(self.analysis_file, 'a')
+        else:
+            self.csv_format() # Formats output file for csv
+            self.analysis.flush()
+            os.fsync(self.analysis.fileno())
+
         # Blacklist output file. New file each day.
         # Removing blacklist file per day. Going to make it one master blacklist.
         #with DailySave.RotatingFileOpener('blacklist', prepend='blacklist-', append='.txt') as bl:
@@ -150,12 +169,10 @@ class VirusTotal:
             if (new_potentials):
 
                 # Analysis Output file. Contains all AV results per request
-                analysis = open(self.analysis_file, 'a')
                 self.blk = open(self.blk_file, 'a')
-                potentials = open(self.potentials_file, 'r')
+                self.potentials = open(self.potentials_file, 'r')
                 self.processed = open(self.processed_file, 'a')
-                self.csv_format(analysis) # Formats output file for csv
-                domainList = potentials.read().split()
+                domainList = self.potentials.read().split()
 
                 for i in range(0, len(domainList)):
                     print("{}/{}".format(i, len(domainList)))
@@ -183,24 +200,70 @@ class VirusTotal:
                         logging.exception("message")
                         pass
                 
-                analysis.close()
+                self.analysis.close()
                 self.blk.close()
-                potentials.close()
+                self.potentials.close()
                 self.processed.close()
 
             else:
                 logging.info("No new potentially malicious domains.")
-                time.sleep(60)
+                logging.info("Reprocessing starting on line {}".format(self.reprocess_line))
+                
+                # Reprocessed the processed list to see if anything has changed
+                self.reprocess()
 
-        return    
+            # Keep track of the number of times this program has looped.
+            self.cycles += 1
+
+        return
+    
+    def reprocess(self):
+        self.processed = open(self.processed_file, 'r')
+        processed_list = self.processed.read().split()
+        start = time.time()
+        time_lapsed = time.time()
+
+        while ((time_lapsed - start) < 3600):
+            print("{}/{}".format(self.reprocess_line, len(processed_list)))
+            
+            try:
+                result = self.request(processed_list[self.reprocess_line])
+
+                # Determine if domain is malicious
+                if (self.is_malicious(result)):
+                    print('{} is MALICIOUS!'.format(processed_list[self.reprocess_line]))
+                    self.blk.write(processed_list[self.reprocess_line] + "\n")
+                    self.blk.flush()
+                    os.fsync(self.blk.fileno())
+                else:
+                    print('{} is NOT malicious!'.format(processed_list[self.reprocess_line]))
+                    self.processed.write(processed_list[self.reprocess_line] + "\n")
+                    self.processed.flush()
+                    os.fsync(self.processed.fileno())
+
+                self.csv_output(result)
+
+            except:
+                print("Check reprocess...")
+                logging.debug("Check reprocess.\n")
+                logging.exception("message")
+                pass
+
+            self.reprocess_line +=1
+            time_lapsed = time.time()
+
+        return
+
+    def not_hour(self, time_lapsed):
+
+        return
 
     def csv_output(self, result):
-        analysis = open(self.analysis_file, 'a')
         domain = result['url']
         row = domain + ","
         ts = time.time()
         timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-        row += ",{},,,,,".format(timestamp) # This is the number of columns until the spreadsheet records AVs.
+        row += "{},,,,,,".format(timestamp) # This is the number of columns until the spreadsheet records AVs.
         scanResults = result['scans']
         
         for i in range(0, len(self.av_list)):
@@ -211,9 +274,9 @@ class VirusTotal:
             row += ","
         
         row += "\n"
-        analysis.write(row)
-        analysis.close()
-        self.cycles += 1
+        self.analysis.write(row)
+        self.analysis.flush()
+        os.fsync(self.analysis.fileno())
         return
 
     def request(self, url):
@@ -276,18 +339,18 @@ class VirusTotal:
         
         # Input file for domain_list
         try:
-            potentials = open(self.potentials_file, 'r')
+            self.potentials = open(self.potentials_file, 'r')
 
         except FileNotFoundError:
             logging.info("{} not found. Creating one now.".format(self.potentials_file))
-            potentials = open(self.potentials_file, 'a')
-            potentials.close()
-            potentials = open(self.potentials_file, 'r')
+            self.potentials = open(self.potentials_file, 'a')
+            self.potentials.close()
+            self.potentials = open(self.potentials_file, 'r')
             logging.exception("message")
             pass     
 
-        potentials_list = potentials.read().split()
-        potentials.close()        
+        potentials_list = self.potentials.read().split()
+        self.potentials.close()        
 
         try:
             blkout = open(self.blk_file, 'r')
@@ -350,13 +413,16 @@ class VirusTotal:
         clean = clean.replace("True", "1")
         return clean
     
-    def csv_format(self, output_file):
+    def csv_format(self):
         '''
             Creates a formatted csv, ready for data.
             Don't get output_file and output_filename confused.
             output_file is open.
         '''
-        output_file.write("Domain,Detected,Clean,Suspicious,Malware,Malicious,ADMINUSLabs,AegisLab WebGuard,AlienVault,Antiy-AVL,Avira,Baidu-International,BitDefender,Blueliv,C-SIRT,Certly,CLEAN MX,Comodo Site Inspector,CyberCrime,CyRadar,desenmascara.me,DNS8,Dr.Web,Emsisoft,ESET,Forcepoint ThreatSeeker,Fortinet,FraudScore,FraudSense,G-Data,Google Safebrowsing,K7AntiVirus,Kaspersky,Malc0de Database,Malekal,Malware Domain Blocklist,Malwarebytes hpHosts,Malwared,MalwareDomainList,MalwarePatrol,malwares.com URL checker,Nucleon,OpenPhish,Opera,Phishtank,Quttera,Rising,SCUMWARE.org,SecureBrain,securolytics,Spam404,Sucuri SiteCheck,Tencent,ThreatHive,Trustwave,Virusdie External Site Scan,VX Vault,Web Security Guard,Webutation,Yandex Safebrowsing,ZCloudsec,ZDB Zeus,ZeroCERT,Zerofox,ZeusTracker,zvelo,AutoShun,Netcraft,NotMining,PhishLabs,Sophos,StopBadware,URLQuery\n")
+        self.analysis = open(self.analysis_file, 'a')
+        self.analysis.write("Domain,Timestamp,Detected,Clean,Suspicious,Malware,Malicious,ADMINUSLabs,AegisLab WebGuard,AlienVault,Antiy-AVL,Avira,Baidu-International,BitDefender,Blueliv,C-SIRT,Certly,CLEAN MX,Comodo Site Inspector,CyberCrime,CyRadar,desenmascara.me,DNS8,Dr.Web,Emsisoft,ESET,Forcepoint ThreatSeeker,Fortinet,FraudScore,FraudSense,G-Data,Google Safebrowsing,K7AntiVirus,Kaspersky,Malc0de Database,Malekal,Malware Domain Blocklist,Malwarebytes hpHosts,Malwared,MalwareDomainList,MalwarePatrol,malwares.com URL checker,Nucleon,OpenPhish,Opera,Phishtank,Quttera,Rising,SCUMWARE.org,SecureBrain,securolytics,Spam404,Sucuri SiteCheck,Tencent,ThreatHive,Trustwave,Virusdie External Site Scan,VX Vault,Web Security Guard,Webutation,Yandex Safebrowsing,ZCloudsec,ZDB Zeus,ZeroCERT,Zerofox,ZeusTracker,zvelo,AutoShun,Netcraft,NotMining,PhishLabs,Sophos,StopBadware,URLQuery\n")
+        self.analysis.flush()
+        os.fsync(self.analysis.fileno())
         return
 
     def cell(self, av_result):
@@ -377,20 +443,6 @@ class VirusTotal:
             pass
 
         return cell
-    
-    def append(self, filename):
-        '''
-            Saves output to a file
-        '''
-        f = open(filename, 'a')
-        return f
-    
-    def close(self, filename):
-        '''
-            Closes a file
-        '''
-        filename.close()
-        return
 
     def malcheck(self, url):
         result = self.request(url)
