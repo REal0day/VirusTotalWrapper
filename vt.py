@@ -146,13 +146,9 @@ class VirusTotal:
             os.fsync(self.analysis.fileno())
 
         # GlobalBlacklist.txt
-        if (self.files_exist(self.blk_file)):
+        if not (self.files_exist(self.blk_file)):
             self.blk = open(self.blk_file, 'a')
-            
-        else:
-            self.csv_format() # Formats output file for csv
-            self.blk.flush()
-            os.fsync(self.blk.fileno())
+            self.blk.close()
 
         # Blacklist output file. New file each day.
         # Removing blacklist file per day. Going to make it one master blacklist.
