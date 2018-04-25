@@ -149,6 +149,11 @@ class VirusTotal:
         if not (self.files_exist(self.blk_file)):
             self.blk = open(self.blk_file, 'a')
             self.blk.close()
+        
+        # Processed_file.txt
+        if not (self.files_exist(self.processed_file)):
+            self.processed = open(self.processed_file, 'a')
+            self.processed.close()
 
         # Blacklist output file. New file each day.
         # Removing blacklist file per day. Going to make it one master blacklist.
