@@ -20,7 +20,7 @@
 # Merge two json strings to one json
 from pathlib import Path
 import Mallector, requests, logging
-import time, DailySave, queue, os, datetime
+import time, DailySave, os, datetime, sys
 
 
 class VirusTotal:
@@ -315,8 +315,8 @@ class VirusTotal:
         
         if (response.status_code == 403):
             logging.debug("403: {}".format(url))
-            print("403") # DEBUGGING
-            return
+            print("403: ERROR WITH API-KEY") # DEBUGGING
+            sys.exit(1)
 
         try:
             json_response = response.json()
@@ -471,3 +471,14 @@ class VirusTotal:
             logging.exception("message")
             pass
         return False
+
+
+def main():
+    print("Welcome to VirusTotalWrapper!")
+    print("If you don't have an API-Key, get one for free at VirusTotal.com.")
+    api = input("Enter your API-Key: ")
+    c = VirusTotal()
+    c.persistent_analysis(api)
+
+if __name__ == "__main__":
+    main()
