@@ -485,7 +485,6 @@ def main():
     print("If you don't have an API-Key, get one for free at VirusTotal.com.")
     api = input("Enter your API-Key: ")
 
-    filecheck
     c = VirusTotal()
     c.persistent_analysis(api)
 
