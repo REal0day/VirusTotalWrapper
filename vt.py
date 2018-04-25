@@ -26,7 +26,7 @@ import time, DailySave, queue, os, datetime
 class VirusTotal:
 
     def __init__(self):
-        self.api = "06152a7ad29de8672ae94b27e7079f2911b0c64f9c63f4cb516113c9919420a1"
+        self.api = ""
         self.av_list = open('data/VT-AVs', 'r').read().splitlines()
         self.potentials = None
         self.potentials_file = 'data/Potentials.txt'
@@ -125,7 +125,7 @@ class VirusTotal:
         analysis.close()
         return
 
-    def persistent_analysis(self):
+    def persistent_analysis(self, api_key):
         '''
             Driver.
             1. Reads domain list from file
@@ -133,8 +133,9 @@ class VirusTotal:
             3. Formats output file
             4. Gives url to 
         '''
-        # Determine if files exist, if they don't create them.
+        self.api = api_key
 
+        # Determine if files exist, if they don't create them.
         if (self.files_exist(self.analysis_file)):
             self.analysis = open(self.analysis_file, 'a')
         else:
