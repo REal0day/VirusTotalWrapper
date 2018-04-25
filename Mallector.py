@@ -115,7 +115,7 @@ class Mallector:
         
         # Removes dupes
         self.potential_list = set(self.potential_list)
-        self.potential_list = list(self.potential_list
+        self.potential_list = list(self.potential_list)
 
         # Remove any domains already collected.
         out = open(output_filename, 'a')
