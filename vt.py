@@ -7,7 +7,10 @@
 # Privileges	public key
 # Request rate	4 requests/minute
 # Daily quota	5760 requests/day
-# Monthly quota	Uncapped requests/month
+#
+# Privileges	paid key
+# Request rate	25 requests/minute
+# Daily quota	36,000 requests/day
 #
 # Given the bandwidth, and the fact that one must request a url to be checked,
 # and then request the results, the amount of urls classified per minute or day is n/2.
@@ -27,7 +30,7 @@ class VirusTotal:
 
     def __init__(self):
         self.api = ""
-        self.av_list = open('data/VT-AVs', 'r').read().splitlines()
+        self.av_list = open('config/VT-AVs', 'r').read().splitlines()
         self.potentials = None
         self.potentials_file = 'data/Potentials.txt'
         self.blk = None
