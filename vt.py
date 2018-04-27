@@ -29,7 +29,10 @@ import time, DailySave, os, datetime, sys
 class VirusTotal:
 
     def __init__(self):
-        self.api = ""
+        self.keyblade = None
+        self.keyring = None
+        self.new_key = True
+        self.key_index = 0
         self.av_list = open('config/VT-AVs', 'r').read().splitlines()
         self.potentials = None
         self.potentials_file = 'data/Potentials.txt'
@@ -44,6 +47,11 @@ class VirusTotal:
         self.data = [self.analysis_file, self.blk_file, self.potentials_file, self.processed_file]
         logging.basicConfig(filename='logs/vt.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         return
+    
+    def multiple_keyblades(self):
+        if (type(self.keyblade) == list):
+            return True
+        return False
     
     def files_exist(self, filename):
         the_file = Path(filename)
@@ -128,7 +136,7 @@ class VirusTotal:
         analysis.close()
         return
 
-    def persistent_analysis(self, api_key):
+    def persistent_analysis(self):
         '''
             Driver.
             1. Reads domain list from file
@@ -136,8 +144,6 @@ class VirusTotal:
             3. Formats output file
             4. Gives url to 
         '''
-        self.api = api_key
-
         # Determine if files exist, if they don't create them.
         # Full-Analysis.txt
         if (self.files_exist(self.analysis_file)):
@@ -295,6 +301,12 @@ class VirusTotal:
         self.analysis.flush()
         os.fsync(self.analysis.fileno())
         return
+    
+    def key_rotate(self):
+        if (len(self.keyring) == (self.key_index)):
+            self.key_index = 0
+        self.key_index += 1
+        return
 
     def request(self, url):
         '''
@@ -305,7 +317,8 @@ class VirusTotal:
         try:
             addResponse = self.add_url(url)
         except:
-            print("Waiting 60s...")
+            # IF MANY KEYS, SWITCH KEYS HERE
+            print("request Waiting 60s...")
             self.blk.flush()
             os.fsync(self.blk.fileno())
             pass
@@ -325,23 +338,57 @@ class VirusTotal:
     def add_url(self, url):
         '''
             Adds a domain/url/ip to vt queue to analyze. 
-        '''  
-        params = {'apikey': self.api, 'url': url}
+        '''
+        # These are for enabling key rotation
+        origin = time.time()
+        self.new_key = True
+
+        # These are for the request to VT's server
+        if (self.keyring):
+            params = {'apikey': self.keyring[self.key_index], 'url': url}
+        
+        else:
+            params = {'apikey': self.keyblade, 'url': url}
+        
         response = requests.post('https://www.virustotal.com/vtapi/v2/url/scan', data=params)
         
         if (response.status_code == 403):
             logging.debug("403: {}".format(url))
             print("403: ERROR WITH API-KEY") # DEBUGGING
-            sys.exit(1)
+            sys.exit(0)
 
         try:
             json_response = response.json()
+            self.new_key = False
 
         except:
-            print("Waiting 60s...")
-            time.sleep(60)
-            response = requests.post('https://www.virustotal.com/vtapi/v2/url/scan', data=params)
-            
+
+            # If they're multiple API keys
+            if (self.keyring):
+
+                # It was a new key and it failed, meaning it's still on cooldown mode at the server.
+                if (self.new_key):
+                    end = time.time()
+                    time_lapsed = end - origin
+                    
+                    # If 60s has passed since the first key started, cooldown is over, reset keys and start over.
+                    if (time_lapsed > 60):
+                        self.key_rotate()
+                        self.new_key = True
+                    
+                    else:
+                        print("Keyring sleep: {}s".format(60-time_lapsed))
+                        time.sleep(60 - time_lapsed)
+
+                else: # Branch to switch keys
+                    self.new_key = True
+                    self.key_rotate()
+
+            else:
+                print("add_url Waiting 60s...")
+                time.sleep(60)
+                response = requests.post('https://www.virustotal.com/vtapi/v2/url/scan', data=params)
+                
             if (response.status_code == 403):
                 logging.debug("403: {}".format(url))
                 print("403") # DEBUGGING
@@ -350,6 +397,7 @@ class VirusTotal:
             json_response = response.json()
             logging.exception("message")
             pass
+
         return json_response
     
     def new_pdomains(self):
@@ -406,7 +454,7 @@ class VirusTotal:
         '''
             Gets the results of a domain/url/ip request.
         '''
-        params = {'apikey': self.api, 'resource':scan_id}
+        params = {'apikey': self.keyblade, 'resource':scan_id}
         headers = {"Accept-Encoding": "gzip, deflate",\
             "User-Agent" : "gzip,  My Python requests library example client or username"}
         response = requests.post('https://www.virustotal.com/vtapi/v2/url/report', params=params, headers=headers)
@@ -479,8 +527,9 @@ class VirusTotal:
             If both Forcepoint ThreatSeeker and Fortinet return True,
             it is malicious.
         '''
+        
         try:
-            if (result['scans']['Forcepoint ThreatSeeker']['detected'] & result['scans']['Fortinet']['detected']):
+            if ("clean" not in result['scans']['Forcepoint ThreatSeeker']['result']) & ("clean" not in result['scans']['Forcepoint ThreatSeeker']['result']):
                 return True
         except:
             logging.warning("{} could not be determine as malicious or not. AVs on VT might not have analyzed domain.")
@@ -492,10 +541,31 @@ class VirusTotal:
 def main():
     print("Welcome to VirusTotalWrapper!")
     print("If you don't have an API-Key, get one for free at VirusTotal.com.")
-    api = input("Enter your API-Key: ")
 
+    # Creates the VirusTotal Instance
     c = VirusTotal()
-    c.persistent_analysis(api)
+
+    while (type(c.keyblade) == (type(c.keyring))):
+        keys = input("Do you have multiple API keys? (y/n) ")
+
+        if ((keys == 'y') or (keys == 'Y')):
+            kingdom_hearts = input("Please provide the location of the file that contains your API-keys.\n ( /home/user/keys ): ")
+            
+            try:
+                with open(kingdom_hearts, 'r') as kh:
+                    c.keyring = kh.read().split()
+            except FileNotFoundError:
+                print("Unable to find the file.")
+
+        elif ((keys == 'n') or (keys == 'N')):
+            keyblade = input("Enter your Key: ")
+            c.keyblade = keyblade
+
+        else:
+            pass
+
+    # Start running the analysis
+    c.persistent_analysis()
 
 if __name__ == "__main__":
     main()

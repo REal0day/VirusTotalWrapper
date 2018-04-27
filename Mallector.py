@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 class Mallector:
 
     def __init__(self):
-        self.malfeeds = open('malware-feeds', 'r').read().splitlines()
+        self.malfeeds = open('config/malware-feeds', 'r').read().splitlines()
         self.potential_list = []
         self.potentials = None
         self.potentials_file = 'data/Potentials.txt'
@@ -213,9 +213,13 @@ class Mallector:
         '''
             Removes domains that have been blacklisted
         '''
-        blk_file_lines = open(self.blk_file, 'r').readlines()
-        potential_lines = open(self.potentials_file, 'r').readlines()
-
+        with open(self.blk_file, 'r') as blk:
+            blk_list = blk.read().split()
+        
+        with open(self.potentials_file, 'r') as potential:
+            potential_list = potential.read().split()
+        
+        old_lines = potential_list + blk_list
         uniqlines = set(old_lines)
         current_number = len(uniqlines)
         number_of_dupes = number_of_lines_before - current_number
