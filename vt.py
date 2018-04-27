@@ -23,8 +23,7 @@
 # Merge two json strings to one json
 from pathlib import Path
 import Mallector, requests, logging
-import time, DailySave, os, datetime, sys
-
+import time, os, datetime, sys
 
 class VirusTotal:
 
@@ -33,6 +32,7 @@ class VirusTotal:
         self.keyring = None
         self.new_key = True
         self.key_index = 0
+        self.collector = Mallector.Mallector()
         self.av_list = open('config/VT-AVs', 'r').read().splitlines()
         self.potentials = None
         self.potentials_file = 'data/Potentials.txt'
@@ -167,7 +167,6 @@ class VirusTotal:
         # Blacklist output file. New file each day.
         # Removing blacklist file per day. Going to make it one master blacklist.
         #with DailySave.RotatingFileOpener('blacklist', prepend='blacklist-', append='.txt') as bl:
-        collector = Mallector.Mallector()
 
         while True:
 
@@ -175,26 +174,24 @@ class VirusTotal:
             print("Number of cycles: {}".format(self.cycles))
 
             # Updates feeds
-            collector.update_feeds()
+            self.collector.update_feeds()
 
             # Gathers all new domains from feeds
-            collector.collect(self.potentials_file)
+            self.collector.collect(self.potentials_file)
 
             # Cleans all duplicates in all three files.
-            collector.dedupe_all()
+            self.collector.dedupe_all()
 
             # Cleans all domains that have already been processed
-            collector.already_processed()
+            self.collector.already_processed()
 
             # Creates a list of potentially malicious domains from potential.txt
             new_potentials = self.new_pdomains()
             if (new_potentials):
 
                 # Analysis Output file. Contains all AV results per request
-                self.blk = open(self.blk_file, 'a')
-                self.potentials = open(self.potentials_file, 'r')
-                self.processed = open(self.processed_file, 'a')
-                domainList = self.potentials.read().split()
+                with open(self.potentials_file, 'r') as self.potentials:
+                    domainList = self.potentials.read().split()
 
                 for i in range(0, len(domainList)):
                     print("{}/{}".format(i, len(domainList)))
@@ -205,14 +202,18 @@ class VirusTotal:
                         # Determine if domain is malicious
                         if (self.is_malicious(result)):
                             print('{} is MALICIOUS!'.format(domainList[i]))
-                            self.blk.write(domainList[i] + "\n")
-                            self.blk.flush()
-                            os.fsync(self.blk.fileno())
+
+                            with open(self.blk_file, 'a') as self.blk:
+                                self.blk.write(domainList[i] + "\n")
+                                self.blk.flush()
+                                os.fsync(self.blk.fileno())
+
                         else:
                             print('{} is NOT malicious!'.format(domainList[i]))
-                            self.processed.write(domainList[i] + "\n")
-                            self.processed.flush()
-                            os.fsync(self.processed.fileno())
+                            with open(self.processed_file, 'a') as self.processed:
+                                self.processed.write(domainList[i] + "\n")
+                                self.processed.flush()
+                                os.fsync(self.processed.fileno())
 
                         self.csv_output(result)
 
@@ -223,10 +224,7 @@ class VirusTotal:
                         pass
                 
                 self.analysis.close()
-                self.blk.close()
-                self.potentials.close()
-                self.processed.close()
-
+                
             else:
                 logging.info("No new potentially malicious domains.")
                 logging.info("Reprocessing starting on line {}".format(self.reprocess_line))
@@ -368,6 +366,7 @@ class VirusTotal:
 
                 # It was a new key and it failed, meaning it's still on cooldown mode at the server.
                 if (self.new_key):
+                    self.collector.already_processed()
                     end = time.time()
                     time_lapsed = end - origin
                     

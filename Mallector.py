@@ -27,7 +27,7 @@ class Mallector:
         return
     
     def update_feeds(self):
-        self.malfeeds = open('malware-feeds', 'r').read().splitlines()
+        self.malfeeds = open('config/malware-feeds', 'r').read().splitlines()
         return
 
     def has_both(self, domain_string):
@@ -175,42 +175,40 @@ class Mallector:
         return
     
     def already_processed(self):
+
         count = 0
-        blk = open(self.blk_file, 'r')
-        potentials = open(self.potentials_file, 'r')
-        processed = open(self.processed_file, 'r')
 
-        blk_list = blk.read().split()
-        potentials_list = potentials.read().split()
-        processed_list = processed.read().split()
+        with open(self.blk_file, 'r') as blk:
+            with open(self.potentials_file, 'r') as potentials:
+                with open(self.processed_file, 'r') as processed:
 
-        already_processed_list = processed_list + blk_list
+                    blk_list = blk.read().split()
+                    potentials_list = potentials.read().split()
+                    processed_list = processed.read().split()
 
-        for item1 in range(0,len(already_processed_list)):
-            for item2 in range(0,len(potentials_list)):
-                try:
-                    if (already_processed_list[item1] == potentials_list[item2]):
-                        potentials_list.remove(already_processed_list[item1])
-                        count += 1
-                except:
-                    pass
-        
-        blk.close()
-        potentials.close()
-        processed.close()
+                    already_processed_list = processed_list + blk_list
+
+                    for item1 in range(0,len(already_processed_list)):
+                        for item2 in range(0,len(potentials_list)):
+                            try:
+                                if (already_processed_list[item1] == potentials_list[item2]):
+                                    potentials_list.remove(already_processed_list[item1])
+                                    count += 1
+                            except:
+                                pass
 
         print("{} domains already processed for potential.".format(count))
         print("{} potentially malicious domains.".format(len(potentials_list)))
 
-        f = open(self.potentials_file, 'w')
-        for i in range(0, len(potentials_list)):
-            f.write(potentials_list[i] + "\n")
-        f.close()
+        with open(self.potentials_file, 'w') as f:
+            for i in range(0, len(potentials_list)):
+                f.write(potentials_list[i] + "\n")
 
         return
 
     def removed_preprocessed_blacklist_domains(self):
         '''
+            Currently not used
             Removes domains that have been blacklisted
         '''
         with open(self.blk_file, 'r') as blk:
@@ -223,5 +221,8 @@ class Mallector:
         uniqlines = set(old_lines)
         current_number = len(uniqlines)
         number_of_dupes = number_of_lines_before - current_number
+        print("Number of Duplicates: {}".format())
+        print("Number of lines in Potential Before: {}".format(len(potential_list)))
+        print("Number of lines in Potential After: {}".format(len(uniqlines)))
         return
         
