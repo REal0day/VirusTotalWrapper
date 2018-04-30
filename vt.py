@@ -587,7 +587,7 @@ def main():
             try:
                 with open(kingdom_hearts, 'r') as kh:
                     c.keyring = kh.read().split()
-            except FileNotFoundError:
+            except (FileNotFoundError, IsADirectoryError), as e:
                 print("Unable to find the file.")
 
         elif ((keys == 'n') or (keys == 'N')):
