@@ -1,0 +1,4 @@
+wc -l GlobalBlacklist.txt
+wc -l Processed_file.txt
+wc -l Potentials.txt
+
