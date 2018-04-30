@@ -317,7 +317,6 @@ class VirusTotal:
         print("[ ] Sending url...{}".format(url))
         try:
             addResponse = self.add_url(url)
-            print("addResponse: {}".format(addResponse)) # DEBUGGING REMOVE AFTER CHECK PERSISTENCE BUG
         except:
             print("request Waiting 60s...")
             time.sleep(60)
@@ -375,41 +374,30 @@ class VirusTotal:
         # THIS SHIT WON'T ROTATE KEYS CORRECTLY
         if (response.status_code == 204):
             logging.debug("204: {}".format(url))
-            print("204: Processed but Content returned nothing. Issue with key mabye?")
-            print("keyring: {}".format(self.keyring)) # DEBUG. REMOVE WHEN KEY ROTATING WORKS
 
             # If they're multiple API keys
             if (self.keyring):
 
                 # Rotate key from 0 to 1.
-                print("key_index BEFORE: {}".format(self.key_index))
                 self.key_rotate()
-                print("key_index AFTER: {}".format(self.key_index))
                 #self.new_key = True
                 if (self.key_index != 0):
-                    print("key_index NOT EQUAL to 0: {}".format(self.key_index))
                     return self.add_url(url)
 
                 else:
-                    print("key_index EQUAL to 0.")
                     try:
                         self.collector.already_processed()
                     except:
                         pass
-                    print("already_processed complete")
                     end = time.time()
-                    print("end: {}".format(end))
                     time_lapsed = end - origin
-                    print("time_lapsed: {}".format(time_lapsed))
                     
                     # If 60s has passed since the first key started, cooldown is over, reset keys and start over.
                     if (time_lapsed > 60):
-                        print("time_lapsed > 60.")
                         #self.new_key = True
                         return self.add_url(url)
                     
                     else:
-                        print("time_lapsed !> 60.")
                         print("Keyring sleep: {}s".format(60-time_lapsed))
                         time.sleep(60 - time_lapsed)
                         response = requests.post('https://www.virustotal.com/vtapi/v2/url/scan', data=params)
@@ -587,8 +575,19 @@ def main():
             try:
                 with open(kingdom_hearts, 'r') as kh:
                     c.keyring = kh.read().split()
+
             except (FileNotFoundError, IsADirectoryError), as e:
                 print("Unable to find the file.")
+                break
+            
+            key_number = input("There are {} keys. Would you like to use some or all? (some/all): ")
+
+            if ((key_number == 'some') or (key_number == 'Some')):
+                num_of_keys = input("How many: ")
+                while (len(c.keyring) != (num_of_keys)):
+                    del c.keyring[-1]
+            elif ((key_number == 'all') or (key_number == 'All')):
+                pass
 
         elif ((keys == 'n') or (keys == 'N')):
             keyblade = input("Enter your Key: ")
