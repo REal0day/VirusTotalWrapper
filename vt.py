@@ -375,10 +375,10 @@ class VirusTotal:
 
             if ("/" in domain.path):
                 # Get string until /
-                redomain = re.match("^(.*)\/", domain.path).group(1)
+                redomain = re.match("[^\/]*", domain.path).group(0)
                 return redomain
             else:
-                print("{}".format(domain.path))
+                return(domain.path)
 
         else:
             logging.debug("Error while cleaning a malicious domain before appending to blacklist\nDomain: {}".format(item))
