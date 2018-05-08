@@ -254,21 +254,25 @@ class VirusTotal:
                 # Determine if domain is malicious
                 if (self.is_malicious(result)):
                     print('{} is MALICIOUS!'.format(processed_list[self.reprocess_line]))
-                    self.blk.write(processed_list[self.reprocess_line] + "\n")
-                    self.blk.flush()
-                    os.fsync(self.blk.fileno())
+
+                    with open(self.blk_file, 'a') as self.blk:
+                        clean_domain = self.domain_clean(processed_list[self.reprocess_line])
+                        self.blk.write(clean_domain + "\n")
+                        self.blk.flush()
+                        os.fsync(self.blk.fileno())
+
                 else:
                     print('{} is NOT malicious!'.format(processed_list[self.reprocess_line]))
-                    self.processed.write(processed_list[self.reprocess_line] + "\n")
-                    self.processed.flush()
-                    os.fsync(self.processed.fileno())
+                    with open(self.processed_file, 'a') as self.processed:
+                        self.processed.write(processed_list[self.reprocess_line] + "\n")
+                        self.processed.flush()
+                        os.fsync(self.processed.fileno())
 
                 self.csv_output(result)
 
             except:
                 print("Check reprocess...")
                 logging.debug("Check reprocess.\n")
-                logging.exception("message")
                 pass
 
             # This ensure that the reporcess_line counter won't go past the range of number of lines in the file.
@@ -282,6 +286,9 @@ class VirusTotal:
         return
 
     def csv_output(self, result):
+        '''
+            Writes to Full-Analysis.csv
+        '''
         domain = result['url']
         row = domain + ","
         ts = time.time()
