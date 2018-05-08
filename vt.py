@@ -22,8 +22,9 @@
 # https://stackoverflow.com/questions/22698244/how-to-merge-two-json-string-in-python
 # Merge two json strings to one json
 from pathlib import Path
+from urllib.parse import urlparse
 import Mallector, requests, logging
-import time, os, datetime, sys
+import time, os, datetime, sys, re
 
 class VirusTotal:
 
@@ -205,7 +206,8 @@ class VirusTotal:
                             print('{} is MALICIOUS!'.format(domainList[i]))
 
                             with open(self.blk_file, 'a') as self.blk:
-                                self.blk.write(domainList[i] + "\n")
+                                clean_domain = self.domain_clean(domainList[i])
+                                self.blk.write(clean_domain + "\n")
                                 self.blk.flush()
                                 os.fsync(self.blk.fileno())
 
@@ -352,6 +354,30 @@ class VirusTotal:
         '''
 
         return
+
+    def domain_clean(self, string):
+        '''
+            Given a URL/URN, this function will return the domain [and [subdomain[s]]
+        '''
+        domain = urlparse(string)
+
+        if (domain.netloc):
+            return domain.netloc
+
+        elif (domain.path[0] != "/"):
+
+            if ("/" in domain.path):
+                # Get string until /
+                redomain = re.match("^(.*)\/", domain.path).group(1)
+                return redomain
+            else:
+                print("{}".format(domain.path))
+
+        else:
+            logging.debug("Error while cleaning a malicious domain before appending to blacklist\nDomain: {}".format(item))
+
+        return
+
 
     def add_url(self, url):
         '''
@@ -607,6 +633,8 @@ def main():
 
     # Start running the analysis
     c.persistent_analysis()
+
+    return
 
 if __name__ == "__main__":
     main()
