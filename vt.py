@@ -366,18 +366,31 @@ class VirusTotal:
         '''
             Given a URL/URN, this function will return the domain [and [subdomain[s]]
         '''
+        # Determines if port number specified
         domain = urlparse(string)
 
+        if (":" in string):
+            regex_port = "(^\d*)"
+            port = re.match(regex_port, domain.path).group(0)
+            real_domain = domain.scheme
+            return real_domain + ":" + port
+
+        print("urlparse domain: {}".format(domain))
+
         if (domain.netloc):
+            print("1: {}".format(domain.netloc))
             return domain.netloc
 
         elif (domain.path[0] != "/"):
 
             if ("/" in domain.path):
+                print("2-before: {}".format(domain.path))
                 # Get string until /
                 redomain = re.match("[^\/]*", domain.path).group(0)
+                print("2-after: {}".format(redomain))
                 return redomain
             else:
+                print("3: {}".format(domain.path))
                 return(domain.path)
 
         else:
