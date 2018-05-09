@@ -375,22 +375,16 @@ class VirusTotal:
             real_domain = domain.scheme
             return real_domain + ":" + port
 
-        print("urlparse domain: {}".format(domain))
-
         if (domain.netloc):
-            print("1: {}".format(domain.netloc))
             return domain.netloc
 
         elif (domain.path[0] != "/"):
 
             if ("/" in domain.path):
-                print("2-before: {}".format(domain.path))
                 # Get string until /
                 redomain = re.match("[^\/]*", domain.path).group(0)
-                print("2-after: {}".format(redomain))
                 return redomain
             else:
-                print("3: {}".format(domain.path))
                 return(domain.path)
 
         else:
