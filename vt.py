@@ -29,6 +29,7 @@ import time, os, datetime, sys, re
 class VirusTotal:
 
     def __init__(self):
+        self.update = True
         self.keyblade = None
         self.keyring = None
         self.new_key = True
@@ -174,8 +175,9 @@ class VirusTotal:
             # Number of cycles
             print("Number of cycles: {}".format(self.cycles))
 
-            # Updates feeds
-            self.collector.update_feeds()
+            if (self.update):
+                # Updates feeds
+                self.collector.update_feeds()
 
             # Gathers all new domains from feeds
             self.collector.collect(self.potentials_file)
@@ -644,7 +646,13 @@ def main():
 
         else:
             pass
+    
+    
+    update = input("Would you like to update your domains via malware_feed? (y/n) ")
 
+    if ((keys == 'n') or (keys == 'N')):
+        self.update = False
+        
     # Start running the analysis
     c.persistent_analysis()
 
