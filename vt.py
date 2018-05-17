@@ -651,7 +651,7 @@ def main():
     update = input("Would you like to update your domains via malware_feed? (y/n) ")
 
     if ((keys == 'n') or (keys == 'N')):
-        self.update = False
+        c.update = False
         
     # Start running the analysis
     c.persistent_analysis()
