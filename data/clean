@@ -1,0 +1,8 @@
+mv clean ../
+mv status ../
+rm -rf *
+touch GlobalBlacklist.txt
+touch Processed_file.txt
+touch Potentials.txt
+mv ../clean .
+mv ../status .
