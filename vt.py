@@ -179,8 +179,8 @@ class VirusTotal:
                 # Updates feeds
                 self.collector.update_feeds()
 
-            # Gathers all new domains from feeds
-            self.collector.collect(self.potentials_file)
+                # Gathers all new domains from feeds
+                self.collector.collect(self.potentials_file)
 
             # Cleans all duplicates in all three files.
             self.collector.dedupe_all()
@@ -190,6 +190,7 @@ class VirusTotal:
 
             # Creates a list of potentially malicious domains from potential.txt
             new_potentials = self.new_pdomains()
+
             if (new_potentials):
 
                 # Analysis Output file. Contains all AV results per request
