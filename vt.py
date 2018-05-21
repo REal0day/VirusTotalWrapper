@@ -339,22 +339,25 @@ class VirusTotal:
             return self.request(url)
 
         # This should help when addResponse returns nothing.
-        if (addResponse):
+        try:
 
             if ('successfully' in addResponse['verbose_msg']):
                 print("[+] URL Added: {}".format(url))
+            
+                # This section you receive the JSON
+                results = self.results(addResponse['scan_id'])
+                return results
+            
             else:
-                logging.debug("addResponse: ".format(addResponse))
-                #print(json_response['verbose_msg'])
-                return
+                time.sleep(30)
+                return self.request(url)
 
-            # This section you receive the JSON
-            results = self.results(addResponse['scan_id'])
-            return results
-        else:
-            print("addResponse: {}\nRe-requestin in 30s.")
-            time.sleep(30)
-            return self.request(url)
+        except:
+            logging.debug("addResponse: {}".format(addResponse))
+            #print(json_response['verbose_msg'])
+            return
+
+
 
     
     def reattack(self, response):
