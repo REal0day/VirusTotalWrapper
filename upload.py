@@ -3,7 +3,7 @@
 # Name: VT upload
 # Description: Determines if malware has already been uploaded. if it hasn't, upload. Get results on malware.
 from os import listdir, getcwd
-from os.path import isfile, join
+from os.path import isfile, join, exists
 import hashlib, requests
 
 class upload:
@@ -11,18 +11,16 @@ class upload:
     def __init__(self):
         self.apikey = self.get_api()
         self.malDir = self.malware_directory()
-        self.sha_list = self.sha256_list(self.malDir)
-        
 
     def get_api(self):
-        self.apikey = raw_input("API Key?: ")
+        self.apikey = input("API Key?: ")
         return
 
     def malware_directory(self):
         '''
             Determines where the directory containin malware is located.
         '''
-        ans = raw_input("Current directory is: {}\nIs this the malware directory? (y/n): ".format(getcwd()))
+        ans = input("Current directory is: {}\nIs this the malware directory? (y/n): ".format(getcwd()))
         if (ans.lower() == "yes" or ans.lower() == "y"):
             return getcwd()
         
@@ -39,13 +37,13 @@ class upload:
         '''
             Gets path of malware directory
         '''
-        path = raw_input("Enter path: ")
-        
-        if os.path.exists(path):
+        path = input("Enter path: ")
+        print(path)
+        if exists(path):
             return path
         
         else:
-            print("path not understood.")
+            print("Path not understood.")
         
         self.get_path()
 
@@ -54,6 +52,7 @@ class upload:
         '''
             Given a file, this will gather the 
         '''
+        filename = self.malDir + "/" + filename   # Gives full path of file
         BLOCKSIZE = 65536
         hasher = hashlib.sha256()
         with open(filename, 'rb') as afile:
@@ -63,8 +62,21 @@ class upload:
                 buf = afile.read(BLOCKSIZE)
         return hasher.hexdigest()
 
-    def sha256_list(self, mypath):
-        self.sha_list = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+    def collect_sha256(self, malware_list):
+        '''
+            Given a list of filenames.
+            open each up and get the sha256 of the file.
+        '''
+        sha_list = []
+        for i in range(0, len(malware_list)):
+            sha_hash = self.get_sha256(malware_list[i])
+            sha_list.append(sha_hash)
+        self.sha_list = sha_list
+        return
+
+
+    def filename_list(self, mypath):
+        self.malware_list = [f for f in listdir(mypath) if isfile(join(mypath, f))]
         return
 
     def upload_malware(self, filename):
@@ -72,13 +84,15 @@ class upload:
         params = {'apikey': self.apikey}
         files = {'file': (filename, open(filename, 'rb'))}
         response = requests.post(url, files=files, params=params)
-       return response.json()
-
+        return response
+        #return response.json()
 
 
 def main():
     c = upload()
-
+    c.malware_list = c.filename_list(c.malDir)     # This isn't working. why?
+    print(c.malware_list)
+    c.sha_list = c.collect_sha256(c.malware_list)
     return
 
 if __name__ == "__main__":
