@@ -87,6 +87,24 @@ class upload:
         return response
         #return response.json()
 
+    def results(self, scan_id):
+        '''
+            Gets the results of a file request.
+            Input can be scan_id or "resource"
+        '''
+        # These are for the request to VT's server
+        params = {'apikey': self.apikey, 'resource':scan_id}
+        headers = {"Accept-Encoding": "gzip, deflate",\
+            "User-Agent" : "gzip,  My Python requests library example client or username"}
+        response = requests.get('https://www.virustotal.com/vtapi/v2/file/report', params=params, headers=headers)
+
+        # There's a case where the response is empty
+        if not (response):
+            return
+
+        json_response = response.json()
+        return json_response
+
 
 def main():
     c = upload()
