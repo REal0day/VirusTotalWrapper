@@ -119,10 +119,11 @@ class upload:
         result = self.results(scan_id)
         if (self.results_completed):
             # Put result in csv
+            self.csv_output(result)
         
         else:
             time.sleep(60)
-            print("Analysis of Malware not complete. Sleeping 60s..."))
+            print("Analysis of Malware not complete. Sleeping 60s...")
             self.get_report(scan_id)
         return
 
