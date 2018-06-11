@@ -11,10 +11,11 @@ class upload:
     def __init__(self):
         self.apikey = self.get_api()
         self.malDir = self.malware_directory()
+        self.malware_list = self.filename_list(self.malDir)
 
     def get_api(self):
         self.apikey = input("API Key?: ")
-        return
+        return self.apikey
 
     def malware_directory(self):
         '''
@@ -77,12 +78,14 @@ class upload:
 
     def filename_list(self, mypath):
         self.malware_list = [f for f in listdir(mypath) if isfile(join(mypath, f))]
-        return
+        return self.malware_list
 
     def upload_malware(self, filename):
         url = 'https://www.virustotal.com/vtapi/v2/file/scan'
         params = {'apikey': self.apikey}
-        files = {'file': (filename, open(filename, 'rb'))}
+
+        fullpath = self.malDir + "/" + filename
+        files = {'file': (filename, open(fullpath, 'rb'))}
         response = requests.post(url, files=files, params=params)
         return response
         #return response.json()
@@ -105,10 +108,39 @@ class upload:
         json_response = response.json()
         return json_response
 
+    def get_report(self, scan_id):
+        '''
+            Given a scan_id
+            get the report of a malicious file from VT
+        '''
+        result = self.results(scan_id)
+        if (self.results_completed):
+            # Put result in csv
+        
+        else:
+            time.sleep(60)
+            print("Analysis of Malware not complete. Sleeping 60s..."))
+            self.get_report(scan_id)
+        return
+
+    def results_completed(self, result):
+        if (result['response_code'] is not 1):
+            return False
+        return True
+
+
+    def driver(self, filename):
+        response = self.upload_malware(filename)
+        scan_id = response.json()['scan_id']
+        self.get_report(scan_id)
+
+        if (result['response_code'] is not 1):
+            self.driver(filename)
+
+        return
 
 def main():
     c = upload()
-    c.malware_list = c.filename_list(c.malDir)     # This isn't working. why?
     print(c.malware_list)
     c.sha_list = c.collect_sha256(c.malware_list)
     return
