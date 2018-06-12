@@ -4,7 +4,7 @@
 # Description: Determines if malware has already been uploaded. if it hasn't, upload. Get results on malware.
 from os import listdir, getcwd, fsync
 from os.path import isfile, join, exists
-import hashlib, requests
+import hashlib, requests, time, datetime
 
 class upload:
 
@@ -117,13 +117,13 @@ class upload:
             get the report of a malicious file from VT
         '''
         result = self.results(scan_id)
-        if (self.results_completed):
+        if (self.results_completed(result)):
             # Put result in csv
             self.csv_output(result)
         
         else:
-            time.sleep(60)
             print("Analysis of Malware not complete. Sleeping 60s...")
+            time.sleep(60)
             self.get_report(scan_id)
         return
 
@@ -141,11 +141,6 @@ class upload:
         response = self.upload_malware(filename)
         scan_id = response.json()['scan_id']
         self.get_report(scan_id)
-
-        if (result['response_code'] is not 1):
-            self.driver(filename)
-
-        # Write to csv
         return
 
     def cell(self, av_result):
@@ -155,14 +150,13 @@ class upload:
             ex. {'detected': False, 'result': 'clean site'}
                 'False/clean site'
         '''
-        cell = str(av_result['detected'])
-        cell += ";" + av_result['result']
-        
+        cell = str(av_result['result'])     
+       
         # Sometimes there aren't details.
         try:
-            cell += ";" + av_result['detail']
+            cell += ";" + str(av_result['update'])
+            cell += ";" + str(av_result['version'])
         except:
-            logging.exception("message")
             pass
 
         return cell
@@ -171,11 +165,12 @@ class upload:
         '''
             Writes to Full-Analysis.csv
         '''
+        print(result)
         md5 = result['md5']
         row = md5 + ","
         ts = time.time()
         timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-        positives = result['positives'] + "/" + str(len(self.av_list_file_scanners))
+        positives = str(result['positives']) + "/" + str(len(self.av_list_file_scanners))
 
         row += "{},{},".format(timestamp, positives) # This is the number of columns until the spreadsheet records AVs.
         scanResults = result['scans']
@@ -188,9 +183,10 @@ class upload:
             row += ","
         
         row += "\n"
-        self.analysis.write(row)
-        self.analysis.flush()
-        fsync(self.analysis.fileno())
+        with open(self.analysis_file, "a") as self.analysis:
+            self.analysis.write(row)
+            self.analysis.flush()
+            fsync(self.analysis.fileno())
         return
 
 def main():
