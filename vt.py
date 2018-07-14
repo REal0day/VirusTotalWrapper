@@ -205,6 +205,8 @@ class VirusTotal:
                         print("result: {}".format(result))
 
                         # Determine if domain is malicious
+                        # If both Forcepoint ThreatSeeker and Fortinet return True,
+                        # it is malicious.
                         if (self.is_malicious(result)):
                             print('{} is MALICIOUS!'.format(domainList[i]))
 
