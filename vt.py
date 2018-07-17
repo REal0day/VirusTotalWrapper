@@ -350,6 +350,10 @@ class VirusTotal:
                 results = self.results(addResponse['scan_id'])
                 return results
             
+            elif ('Invalid' in addResponse['verbose_msg']):
+                # FIX THIS. if invalid, it create infinite loop.
+                results = False
+            
             else:
                 time.sleep(30)
                 return self.request(url)
@@ -605,6 +609,10 @@ class VirusTotal:
             If both Forcepoint ThreatSeeker and Fortinet return True,
             it is malicious.
         '''
+        # If it receives a result that is False, it will return false through this function.
+        # This is useful when a domain does not work in VT.
+        if not (result):
+            return False
         
         try:
             if ("clean" not in result['scans']['Forcepoint ThreatSeeker']['result']) & ("clean" not in result['scans']['Forcepoint ThreatSeeker']['result']):
