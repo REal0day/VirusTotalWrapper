@@ -614,8 +614,9 @@ class VirusTotal:
         if not (result):
             return False
         
+		# Need to change this to Fortinet and not double Forcepoints.
         try:
-            if ("clean" not in result['scans']['Forcepoint ThreatSeeker']['result']) & ("clean" not in result['scans']['Forcepoint ThreatSeeker']['result']):
+            if ("clean" not in result['scans']['Forcepoint ThreatSeeker']['result']) & ("unrated" not in result['scans']['Forcepoint ThreatSeeker']['result']):
                 return True
         except:
             logging.warning("{} could not be determine as malicious or not. AVs on VT might not have analyzed domain.")
